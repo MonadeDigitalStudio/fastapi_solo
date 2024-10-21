@@ -42,7 +42,7 @@ def scope():
 
 
 @post_router.get("/scoped", response_model=PaginatedResponse[PostResponse])
-def get_all_posts_scoped(solo: IndexDep[Annotated[Post, scope]]):
+def get_all_posts_scoped(solo: IndexDep[Post, scope]):
     return solo.execute()
 
 
