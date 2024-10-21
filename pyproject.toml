@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "fastapi-solo"
+version = "0.1.0"
+description = ""
+authors = ["Monade <team@monade.io>"]
+readme = "README.md"
+packages = [{include = "fastapi_solo"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+fastapi = ">=0.106"
+sqlalchemy = {extras = ["asyncio"], version = ">=2.0"}
+inflection = ">=0.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+jupyter = "^1.0.0"
+flake8 = "^7.0.0"
+autoflake = "^2.3.1"
+aiosqlite = "^0.20.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
