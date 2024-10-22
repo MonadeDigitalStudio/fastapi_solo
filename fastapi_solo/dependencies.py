@@ -1,4 +1,4 @@
-from typing import Annotated, TypeVar, TYPE_CHECKING
+from typing import Annotated, TypeVar, TYPE_CHECKING, get_origin, get_args
 from fastapi import Depends
 
 from .db import (
@@ -130,9 +130,8 @@ else:
         if isinstance(params, tuple):
             model, get_query = params
             return Annotated[Index, Depends(get_index(model, get_query))]
-        if getattr(params, "_name", None) == "Annotated":
-            model = params.__origin__
-            get_query = params.__metadata__[0]
+        if get_origin(params) is Annotated:
+            model, get_query = get_args(params)
             return Annotated[Index, Depends(get_index(model, get_query))]
         return Annotated[Index, Depends(get_index(params))]
 
@@ -141,9 +140,8 @@ else:
         if isinstance(params, tuple):
             model, get_query = params
             return Annotated[Show, Depends(get_show(model, get_query))]
-        if getattr(params, "_name", None) == "Annotated":
-            model = params.__origin__
-            get_query = params.__metadata__[0]
+        if get_origin(params) is Annotated:
+            model, get_query = get_args(params)
             return Annotated[Show, Depends(get_show(model, get_query))]
         return Annotated[Show, Depends(get_show(params))]
 
@@ -156,9 +154,8 @@ else:
         if isinstance(params, tuple):
             model, get_query = params
             return Annotated[Update, Depends(get_update(model, get_query))]
-        if getattr(params, "_name", None) == "Annotated":
-            model = params.__origin__
-            get_query = params.__metadata__[0]
+        if get_origin(params) is Annotated:
+            model, get_query = get_args(params)
             return Annotated[Update, Depends(get_update(model, get_query))]
         return Annotated[Update, Depends(get_update(params))]
 
@@ -167,9 +164,8 @@ else:
         if isinstance(params, tuple):
             model, get_query = params
             return Annotated[Delete, Depends(get_delete(model, get_query))]
-        if getattr(params, "_name", None) == "Annotated":
-            model = params.__origin__
-            get_query = params.__metadata__[0]
+        if get_origin(params) is Annotated:
+            model, get_query = get_args(params)
             return Annotated[Delete, Depends(get_delete(model, get_query))]
         return Annotated[Delete, Depends(get_delete(params))]
 

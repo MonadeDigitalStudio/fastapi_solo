@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Annotated, Any, Optional, get_args, get_origin
 from types import GeneratorType
 from inspect import signature
 from fastapi import Request, BackgroundTasks
@@ -50,13 +50,11 @@ def _resolve_dependencies(sign, kwargs, cache, yields):
             kwargs[key] = cache.get(Request)
         elif p.annotation == BackgroundTasks:
             kwargs[key] = cache.get(BackgroundTasks) or InjectedBackgroundTasks()
-        elif hasattr(p.annotation, "__metadata__"):
-            meta_deps = next(
-                (m for m in p.annotation.__metadata__ if isinstance(m, Depends)), None
-            )
-            if meta_deps:
+        elif get_origin(p.annotation) is Annotated:
+            d_type, meta_deps = get_args(p.annotation)
+            if isinstance(meta_deps, Depends):
                 kwargs[key] = _resolve_dep(
-                    meta_deps.dependency or p.annotation.__origin__,
+                    meta_deps.dependency or d_type,
                     meta_deps.use_cache,
                     cache,
                     yields,
