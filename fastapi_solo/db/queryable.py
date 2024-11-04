@@ -338,28 +338,3 @@ def queryable(cls: Callable | str, *args):
         return klass
 
     return decorator
-
-
-if TYPE_CHECKING:
-    from .database import SelectModel
-
-
-@overload
-def scope(fn: Callable[["SelectModel", bool], "SelectModel"]): ...
-
-
-@overload
-def scope(fn: Callable[["SelectModel", str], "SelectModel"]): ...
-
-
-def scope(fn: Callable[["SelectModel", Any], "SelectModel"]):
-    """Decorator to create a custom scope for a model
-
-    It's a typed alias for staticmethod
-    """
-
-    @staticmethod
-    def wrapper(q: "SelectModel", term: Any):
-        return fn(q, term)
-
-    return wrapper
