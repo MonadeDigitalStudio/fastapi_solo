@@ -15,6 +15,14 @@ def _close_yields(yields):
             pass
 
 
+def _throw_yields(yields, e):
+    for y in reversed(yields):
+        try:
+            y.throw(e)
+        except Exception:
+            pass
+
+
 def _init_dep(dep, cache, yields):
     val = _injector(dep, _cache=cache, _yields=yields)()  # type: ignore
     if isinstance(val, GeneratorType):
@@ -68,7 +76,12 @@ def _injector_fn(fn, _cache, _yields):
         cache = _cache if _cache is not None else {}
         yields = _yields if _yields is not None else []
         _resolve_dependencies(sign, kwargs, cache, yields)
-        res = fn(*args, **kwargs)
+        try:
+            res = fn(*args, **kwargs)
+        except Exception as e:
+            _throw_yields(yields, e)
+            yields.clear()
+            raise e
         if _yields is None:
             _close_yields(yields)
         return res

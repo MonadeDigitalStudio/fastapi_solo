@@ -20,6 +20,17 @@ async def _aclose_yields(yields):
             pass
 
 
+async def _athrow_yields(yields, e):
+    for y in reversed(yields):
+        try:
+            if isinstance(y, AsyncGeneratorType):
+                await y.athrow(e)
+            else:
+                y.throw(e)
+        except Exception:
+            pass
+
+
 async def _ainit_dep(dep, cache, yields):
     depfn: Any = _injector(dep, _cache=cache, _yields=yields)
     if isasyncgenfunction(depfn):
@@ -81,17 +92,22 @@ def _injector_fn(fn, _cache, _yields):
         cache = _cache if _cache is not None else {}
         yields = _yields if _yields is not None else []
         await _aresolve_dependencies(sign, kwargs, cache, yields)
-        if isasyncgenfunction(fn):
-            gen = fn(*args, **kwargs)
-            res = await anext(gen)
-            yields.append(gen)
-        elif iscoroutinefunction(fn):
-            res = await fn(*args, **kwargs)
-        else:
-            res = fn(*args, **kwargs)
-            if isinstance(res, GeneratorType):
-                yields.append(res)
-                res = next(res)
+        try:
+            if isasyncgenfunction(fn):
+                gen = fn(*args, **kwargs)
+                res = await anext(gen)
+                yields.append(gen)
+            elif iscoroutinefunction(fn):
+                res = await fn(*args, **kwargs)
+            else:
+                res = fn(*args, **kwargs)
+                if isinstance(res, GeneratorType):
+                    yields.append(res)
+                    res = next(res)
+        except Exception as e:
+            await _athrow_yields(yields, e)
+            yields.clear()
+            raise e
         if _yields is None:
             await _aclose_yields(yields)
         return res
