@@ -11,7 +11,7 @@ from typing import (
     Union,
     Any,
 )
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Response
 from pydantic import BaseModel
 from fastapi_solo.serialization.schemas import (
     CommonQueryParams,
@@ -19,6 +19,7 @@ from fastapi_solo.serialization.schemas import (
     IncludesParams,
     get_swagger_filters,
 )
+from fastapi_solo.utils.config import FastapiSoloConfig
 from ..db.database import Session, Base, get_db, select, SelectModel
 from ..utils.misc import VOID_CALLBACK
 from ..utils.db import get_single_pk
@@ -121,7 +122,7 @@ class Index(Solo[T]):
         self.page = pagination.page
         self.size: int | str = pagination.size
 
-    def execute(self, paginate=True) -> Any:
+    def execute(self, paginate=True):
         """Executes the query (filtered, paginated and with includes) and returns the result in a dict for rendering the PaginatedResponse
         params:
         - paginate: if the result should be paginated or not
@@ -163,11 +164,14 @@ class Show(Solo[T]):
 class Create(Solo[T]):
     def __init__(
         self,
+        response: Response,
         db: Session = Depends(get_db),
         includes: IncludesParams = Depends(IncludesParams),
     ):
         self.db = db
         self.includes = includes
+        if not response.status_code:
+            response.status_code = 201
 
     def execute(self, obj: BaseReq) -> T:
         """Executes the insert query
@@ -217,9 +221,12 @@ class Update(Solo[T]):
 class Delete(Solo[T]):
     def __init__(
         self,
+        response: Response,
         db: Session = Depends(get_db),
     ):
         self.db = db
+        if not response.status_code:
+            response.status_code = FastapiSoloConfig.delete_status_code
 
     def execute(self, id):
         """Executes the delete query

@@ -105,6 +105,35 @@ def test_generators_cleanup():
     assert a == 0
 
 
+def test_generators_cleanup_with_exception():
+    a = 0
+
+    def dep1():
+        nonlocal a
+        a += 1
+        return
+
+    def dep2(x=Depends(dep1)):
+        nonlocal a
+        a += 1
+        try:
+            yield
+        finally:
+            a -= 1
+
+    @injector
+    def fn(x=Depends(dep2), y=Depends(dep1)):
+        nonlocal a
+        assert a == 2
+        raise ValueError("test")
+
+    try:
+        fn()
+    except ValueError as e:
+        assert str(e) == "test"
+    assert a == 1
+
+
 def test_kwargs_overriding():
     def dep1():
         return 1

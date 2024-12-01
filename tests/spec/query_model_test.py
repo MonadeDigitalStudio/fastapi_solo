@@ -53,6 +53,9 @@ def test_select_query_by(db):
     q = select(Post).query_by(title_like="2")
     pt = db.exec(q).all()
     assert len(pt) == 1
+    q = select(Post).query_by(id=p2.id)
+    pt = db.exec(q).all()
+    assert len(pt) == 1
     q = select(Post).query_by(title="post2")
     pt = db.exec(q).all()
     assert pt[0].id == p2.id
@@ -72,6 +75,16 @@ def test_select_query_by(db):
     q = select(Post).query_by(tag_name="tag")
     pt = db.exec(q).all()
     assert len(pt) == 2
+
+
+def test_only_decorated_query_by(db):
+    p1, p2, t1, t2, m1, m2, m3 = mock_data(db)
+
+    q = select(Message).query_by(text="msg1")
+    m = db.exec(q).all()
+    count = db.exec(select(Message).count()).one()
+    # Message has no queryable decorator, no filter should be applied
+    assert len(m) == count
 
 
 def test_sort_by(db):
@@ -137,9 +150,10 @@ def test_select_includes(db):
     assert "tags" not in instance_state(pt.messages[0]).unloaded
 
 
-def test_create_with_relationship(db):
-    p1 = Post.create(db, title="post")
-    t = Tag.create(db, name="tag")
-    m1 = Message.create(db, text="msg", post_id=p1.id, tags=[t.id])
-    assert isinstance(m1.tags[0], Tag)
-    assert m1.tags[0].id == t.id
+def test_select_includes_all(db):
+    mock_data(db)
+    q = select(Post).includes("*")
+    pt = db.exec(q).first()
+    assert "messages" not in instance_state(pt).unloaded
+    assert "tags" not in instance_state(pt.messages[0]).unloaded
+    assert "messages" in instance_state(pt.messages[0].tags[0]).unloaded

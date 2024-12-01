@@ -37,6 +37,6 @@ MessageResponse = response_schema(
     m.Message,
     relationships=(
         "tags",
-        {"post": {"messages": {"tags"}}},
+        {"post": {"messages": ["tags"]}},
     ),
 )

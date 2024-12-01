@@ -157,7 +157,7 @@ class Router(APIRouter):
         get_query: Callable[..., SelectModel] = VOID_CALLBACK,
     ):
         self.add_api_route(
-            "/",
+            "",
             self._get_all_paginated(get_query),
             methods=["GET"],
             response_model=PaginatedResponse[response_model or self.response_schema],  # type: ignore
@@ -185,7 +185,7 @@ class Router(APIRouter):
         dependencies: Optional[List] = None,
     ):
         self.add_api_route(
-            "/",
+            "",
             self._create(request_model),
             methods=["POST"],
             status_code=201,
@@ -223,24 +223,24 @@ class Router(APIRouter):
 
     def _get_all_paginated(self, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
         def get_all_paginated(
-            solo: IndexDep[self.model],  # type: ignore
+            index: IndexDep[self.model],  # type: ignore
             base_query: SelectModel = Depends(get_query),
         ):
             if base_query is not None:
-                solo.set_base_query(base_query)
-            return solo.execute()
+                index.set_base_query(base_query)
+            return index.execute()
 
         return get_all_paginated
 
     def _get_one(self, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
         def get_one(
             id,
-            solo: ShowDep[self.model],  # type: ignore
+            show: ShowDep[self.model],  # type: ignore
             base_query: SelectModel = Depends(get_query),
         ):
             if base_query is not None:
-                solo.set_base_query(base_query)
-            return solo.execute(id)
+                show.set_base_query(base_query)
+            return show.execute(id)
 
         return get_one
 
@@ -249,9 +249,9 @@ class Router(APIRouter):
 
         def create(
             obj: request_model,  # type: ignore
-            solo: CreateDep[self.model],  # type: ignore
+            create: CreateDep[self.model],  # type: ignore
         ):
-            return solo.execute(obj)
+            return create.execute(obj)
 
         return create
 
@@ -265,23 +265,23 @@ class Router(APIRouter):
         def update(
             id,
             obj: request_model,  # type: ignore
-            solo: UpdateDep[self.model],  # type: ignore
+            update: UpdateDep[self.model],  # type: ignore
             base_query: SelectModel = Depends(get_query),
         ):
             if base_query is not None:
-                solo.set_base_query(base_query)
-            return solo.execute(id, obj)
+                update.set_base_query(base_query)
+            return update.execute(id, obj)
 
         return update
 
     def _delete(self, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
         def delete(
             id,
-            solo: DeleteDep[self.model],  # type: ignore
+            delete: DeleteDep[self.model],  # type: ignore
             base_query: SelectModel = Depends(get_query),
         ):
             if base_query is not None:
-                solo.set_base_query(base_query)
-            return solo.execute(id)
+                delete.set_base_query(base_query)
+            return delete.execute(id)
 
         return delete

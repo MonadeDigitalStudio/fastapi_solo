@@ -2,13 +2,12 @@ from typing import Annotated
 from fastapi_solo import (
     Router,
     PaginatedResponse,
-    Transaction,
     select,
-    RootTransactionDep,
     IndexDep,
     CreateDep,
+    RootTransactionDep,
+    Transaction,
 )
-from fastapi_solo.aio import AsyncCreateDep, AsyncRootTransactionDep, AsyncTransaction
 from example.models.poly import Poly, PolyA, PolyB
 from example.schemas.poly import (
     PolyA2Response,
@@ -22,9 +21,9 @@ from example.schemas.poly import (
 router = Router()
 
 
-@router.get("/")
+@router.get("")
 def get_all_polys(index: IndexDep[Poly]) -> PaginatedResponse[AnyPoly]:
-    return index.execute()
+    return index.execute()  # type: ignore
 
 
 @router.post("/a", status_code=201, response_model=PolyAResponse)
@@ -57,19 +56,19 @@ def complex_get_all_a(index: IndexDep[Annotated[Poly, scoped_query]]):
 
 
 @router.post("/weird")
-async def weird_post(
-    create: AsyncCreateDep[PolyA],
-    tx: AsyncRootTransactionDep,
+def weird_post(
+    create: CreateDep[PolyA],
+    tx: RootTransactionDep,
 ) -> AnyPoly:
-    p = await create.execute({"a": "asd"})  # only this will be saved
-    await tx.force_commit()
-    await PolyA(a="dsa").asave(create.db)
+    p = create.execute({"a": "asd"})  # only this will be saved
+    tx.force_commit()
+    PolyA(a="dsa").asave(create.db)
 
-    async with AsyncTransaction(create.db, nested=True) as nested:
-        await PolyA(a="zzz").asave(create.db)
-        await nested.force_rollback()
-        await PolyA(a="xxx").asave(create.db)
-    await tx.force_rollback()
-    await create.db.refresh(p)
+    with Transaction(create.db, nested=True) as nested:
+        PolyA(a="zzz").asave(create.db)
+        nested.force_rollback()
+        PolyA(a="xxx").asave(create.db)
+    tx.force_rollback()
+    create.db.refresh(p)
 
     return p

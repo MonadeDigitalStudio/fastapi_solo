@@ -1,12 +1,13 @@
 from fastapi_solo import Base, SelectModel, queryable
 import sqlalchemy as sa
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 @queryable
 class Poly(Base):
     __tablename__ = "poly"
-    id = sa.Column(sa.Integer, primary_key=True)
-    type = sa.Column(sa.String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str | None]
 
     __mapper_args__ = {
         "polymorphic_on": "type",
@@ -21,8 +22,8 @@ class Poly(Base):
 @queryable
 class PolyA(Poly):
     __tablename__ = "poly_a"
-    id = sa.Column(sa.Integer, sa.ForeignKey("poly.id"), primary_key=True)
-    a = sa.Column(sa.String)
+    id: Mapped[int] = mapped_column(sa.ForeignKey("poly.id"), primary_key=True)
+    a: Mapped[str | None]
 
     __mapper_args__ = {"polymorphic_identity": "a"}
 
@@ -34,8 +35,8 @@ class PolyA(Poly):
 @queryable
 class PolyB(Poly):
     __tablename__ = "poly_b"
-    id = sa.Column(sa.Integer, sa.ForeignKey("poly.id"), primary_key=True)
-    b = sa.Column(sa.String)
+    id: Mapped[int] = mapped_column(sa.ForeignKey("poly.id"), primary_key=True)
+    b: Mapped[str | None]
 
     __mapper_args__ = {"polymorphic_identity": "b"}
 

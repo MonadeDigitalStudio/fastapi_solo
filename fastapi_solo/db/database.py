@@ -210,14 +210,14 @@ class Session(SqlAlchemySession):
         return super().query(*entities, **kwargs)  # type: ignore
 
     @overload
-    def exec(self, q: "SelectModel[T]") -> ScalarResult[T]: ...
+    def exec(self, q: "Select[T]") -> ScalarResult[T]: ...
 
     @overload
     def exec(self, q): ...
 
     def exec(self, q, **kwargs):
         result = super().execute(q, **kwargs)
-        if isinstance(q, (SelectModel, QueryModel)):
+        if isinstance(q, (Select, Query)):
             return result.scalars()
         return result
 
@@ -486,12 +486,3 @@ class QueryModel(Query, Queryable):
 
     def upsert(self, find_by=None, flush=True, **kwargs):
         return self.session.upsert(self.model, find_by=find_by, flush=flush, **kwargs)
-
-
-def get_query(model: Base):
-    """inject a query from the model to a route"""
-
-    def _get_query():
-        return select(model)
-
-    return _get_query

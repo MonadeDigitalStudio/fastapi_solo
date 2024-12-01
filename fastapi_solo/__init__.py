@@ -14,7 +14,6 @@ from .db import (
     QueryModel as QueryModel,
     SelectModel as SelectModel,
     select as select,
-    get_query as get_query,
     queryable as queryable,
 )
 

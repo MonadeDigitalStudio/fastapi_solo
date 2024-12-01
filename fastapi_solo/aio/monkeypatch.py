@@ -12,7 +12,7 @@ from ..utils.db import get_single_pk
 from ..db.database import Base, select
 
 
-async def _adecode_field(cls, db, key, value):
+def _is_relationship_argument(cls, key, value):
     if (
         isinstance(value, list)
         and len(value) > 0
@@ -21,26 +21,32 @@ async def _adecode_field(cls, db, key, value):
         attr = getattr(cls, key)
         attr_type = getattr(attr, "property", None)
         if attr_type and isinstance(attr_type, RelationshipProperty):
-            # many to many relationship
-            rel_model = attr_type.mapper.class_
-            if len(value) > 0:
-                pk = get_single_pk(rel_model)
-                rel_list = (
-                    await db.exec(select(rel_model).filter(pk.in_(value)))
-                ).all()
-                if len(rel_list) != len(value):
-                    raise HTTPException(
-                        400,
-                        detail=f"Invalid {key} value. Invalid relationships",
-                    )
-                value = rel_list
+            return True
+    return False
+
+
+async def _adecode_field(cls, db, key, value):
+    if _is_relationship_argument(cls, key, value):
+        # many to many relationship
+        attr = getattr(cls, key)
+        attr_type = getattr(attr, "property")
+        rel_model = attr_type.mapper.class_
+        if len(value) > 0:
+            pk = get_single_pk(rel_model)
+            rel_list = (await db.exec(select(rel_model).filter(pk.in_(value)))).all()
+            if len(rel_list) != len(value):
+                raise HTTPException(
+                    400,
+                    detail=f"Invalid {key} value. Invalid relationships",
+                )
+            value = rel_list
     return value
 
 
 async def asave(
     self,
     db: Optional[SqlAlchemyAsyncSession] = None,
-    update: BaseModel | Dict | Any = None,
+    update: BaseModel | Dict | Any = None,  # type: ignore
     flush=True,
 ):
     """Save the model to the database
@@ -67,10 +73,9 @@ async def asave(
         assert db
     if update:
         if not isinstance(update, dict):
-            to_update: dict = update.model_dump(
-                exclude_unset=True, exclude_defaults=True
-            )
-        for key, value in to_update.items():
+            update: dict = update.model_dump(exclude_unset=True, exclude_defaults=True)
+        for key, value in update.items():
+
             value = await _adecode_field(self.__class__, db, key, value)
             setattr(self, key, value)
     db.add(self)

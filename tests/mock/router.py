@@ -32,9 +32,9 @@ message_router.generate_crud(
 )
 
 
-@post_router.get("/", response_model=PaginatedResponse[PostResponse])
-def get_all_posts(solo: IndexDep[Post]):
-    return solo.execute()
+@post_router.get("", response_model=PaginatedResponse[PostResponse])
+def get_all_posts(index: IndexDep[Post]):
+    return index.execute()
 
 
 def scope():
@@ -42,28 +42,65 @@ def scope():
 
 
 @post_router.get("/scoped", response_model=PaginatedResponse[PostResponse])
-def get_all_posts_scoped(solo: IndexDep[Annotated[Post, scope]]):
-    return solo.execute()
+def get_all_posts_scoped(index: IndexDep[Annotated[Post, scope]]):
+    return index.execute()
+
+
+@post_router.get("/scoped2", response_model=PaginatedResponse[PostResponse])
+def get_all_posts_scoped2(index: IndexDep[Post, scope]):  # type: ignore
+    return index.execute()
+
+
+@post_router.get("/{id}/scoped", response_model=PostResponse)
+def get_post_scoped(id: int, show: ShowDep[Annotated[Post, scope]]):
+    return show.execute(id)
+
+
+@post_router.get("/{id}/scoped2", response_model=PostResponse)
+def get_post_scoped2(id: int, show: ShowDep[Post, scope]):  # type: ignore
+    return show.execute(id)
 
 
 @post_router.get("/{id}", response_model=PostResponse)
-def get_post(id: int, solo: ShowDep[Post]):
-    return solo.execute(id)
+def get_post(id: int, show: ShowDep[Post]):
+    return show.execute(id)
 
 
-@post_router.post("/", response_model=PostResponse, status_code=201)
-def create_post(post: PostCreate, solo: CreateDep[Post]):
-    return solo.execute(post)
+@post_router.post("", response_model=PostResponse, status_code=201)
+def create_post(post: PostCreate, create: CreateDep[Post]):
+    return create.execute(post)
+
+
+@post_router.put("/{id}/scopedput", response_model=PostResponse)
+def update_post_scoped(
+    id: int, post: PostUpdate, update: UpdateDep[Annotated[Post, scope]]
+):
+    return update.execute(id, post)
+
+
+@post_router.put("/{id}/scopedput", response_model=PostResponse)
+def update_post_scoped2(id: int, post: PostUpdate, update: UpdateDep[Post, scope]):  # type: ignore
+    return update.execute(id, post)
 
 
 @post_router.put("/{id}", response_model=PostResponse)
-def update_post(id: int, post: PostUpdate, solo: UpdateDep[Post]):
-    return solo.execute(id, post)
+def update_post(id: int, post: PostUpdate, update: UpdateDep[Post]):
+    return update.execute(id, post)
 
 
-@post_router.delete("/{id}", status_code=204)
-def delete_post(id: int, solo: DeleteDep[Post]):
-    return solo.execute(id)
+@post_router.delete("/{id}/scopeddelete")
+def delete_post_scoped(id: int, delete: DeleteDep[Annotated[Post, scope]]):
+    return delete.execute(id)
+
+
+@post_router.delete("/{id}/scopeddelete")
+def delete_post_scoped2(id: int, delete: DeleteDep[Post, scope]):  # type: ignore
+    return delete.execute(id)
+
+
+@post_router.delete("/{id}")
+def delete_post(id: int, delete: DeleteDep[Post]):
+    return delete.execute(id)
 
 
 api_router.include_router(post_router)

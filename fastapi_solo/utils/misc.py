@@ -24,7 +24,7 @@ def RuntimeType(fn) -> Any:
     return Special
 
 
-def parse_bool(string: str):
+def parse_bool(string: str | bool):
     if isinstance(string, bool):
         return string
     string = (string or "").strip()

@@ -1,4 +1,4 @@
-from typing import Annotated, TypeVar, TYPE_CHECKING
+from typing import Annotated, TypeVar, get_origin, get_args, TYPE_CHECKING
 from fastapi import Depends
 
 from .database import (
@@ -24,71 +24,74 @@ from .solipsist import (
 from fastapi_solo.utils.misc import RuntimeType
 
 
-if TYPE_CHECKING:  # fixme: find a better way to type these
-    T = TypeVar("T", bound=Base)
+AsyncSessionDep = Annotated[AsyncSession, Depends(get_async_db)]  # type: ignore
+AsyncRootTransactionDep = Annotated[
+    AsyncTransaction, Depends(get_async_root_transaction)
+]  # type: ignore
 
-    class _FakeTypable:
-        def __class_getitem__(cls, _): ...
+
+@RuntimeType
+def AsyncIndexDep(params):  # type: ignore
+    if isinstance(params, tuple):
+        model, get_query = params
+        return Annotated[AsyncIndex, Depends(get_async_index(model, get_query))]
+    if get_origin(params) is Annotated:
+        model, get_query = get_args(params)
+        return Annotated[AsyncIndex, Depends(get_async_index(model, get_query))]
+    return Annotated[AsyncIndex, Depends(get_async_index(params))]
+
+
+@RuntimeType
+def AsyncShowDep(params):  # type: ignore
+    if isinstance(params, tuple):
+        model, get_query = params
+        return Annotated[AsyncShow, Depends(get_async_show(model, get_query))]
+    if get_origin(params) is Annotated:
+        model, get_query = get_args(params)
+        return Annotated[AsyncShow, Depends(get_async_show(model, get_query))]
+    return Annotated[AsyncShow, Depends(get_async_show(params))]
+
+
+@RuntimeType
+def AsyncCreateDep(params):  # type: ignore
+    return Annotated[AsyncCreate, Depends(get_async_create(params))]
+
+
+@RuntimeType
+def AsyncUpdateDep(params):  # type: ignore
+    if isinstance(params, tuple):
+        model, get_query = params
+        return Annotated[AsyncUpdate, Depends(get_async_update(model, get_query))]
+    if get_origin(params) is Annotated:
+        model, get_query = get_args(params)
+        return Annotated[AsyncUpdate, Depends(get_async_update(model, get_query))]
+    return Annotated[AsyncUpdate, Depends(get_async_update(params))]
+
+
+@RuntimeType
+def AsyncDeleteDep(params):  # type: ignore
+    if isinstance(params, tuple):
+        model, get_query = params
+        return Annotated[AsyncDelete, Depends(get_async_delete(model, get_query))]
+    if get_origin(params) is Annotated:
+        model, get_query = get_args(params)
+        return Annotated[AsyncDelete, Depends(get_async_delete(model, get_query))]
+    return Annotated[AsyncDelete, Depends(get_async_delete(params))]
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    T = TypeVar("T", bound=Base)
 
     class AsyncSessionDep(AsyncSession): ...
 
     class AsyncRootTransactionDep(AsyncTransaction): ...
 
-    class AsyncIndexDep(AsyncIndex, _FakeTypable): ...
+    class AsyncIndexDep(AsyncIndex[T]): ...
 
-    class AsyncShowDep(AsyncShow, _FakeTypable): ...
+    class AsyncShowDep(AsyncShow[T]): ...
 
-    class AsyncCreateDep(AsyncCreate, _FakeTypable): ...
+    class AsyncCreateDep(AsyncCreate[T]): ...
 
-    class AsyncUpdateDep(AsyncUpdate, _FakeTypable): ...
+    class AsyncUpdateDep(AsyncUpdate[T]): ...
 
-    class AsyncDeleteDep(AsyncDelete, _FakeTypable): ...
-
-else:
-    AsyncSessionDep = Annotated[AsyncSession, Depends(get_async_db)]
-    AsyncRootTransactionDep = Annotated[
-        AsyncTransaction, Depends(get_async_root_transaction)
-    ]
-
-    @RuntimeType
-    def AsyncIndexDep(params):
-        if isinstance(params, tuple):
-            model, get_query = params
-            return Annotated[AsyncIndex, Depends(get_async_index(model, get_query))]
-        return Annotated[AsyncIndex, Depends(get_async_index(params))]
-
-    @RuntimeType
-    def AsyncShowDep(params):
-        if isinstance(params, tuple):
-            model, get_query = params
-            return Annotated[AsyncShow, Depends(get_async_show(model, get_query))]
-        return Annotated[AsyncShow, Depends(get_async_show(params))]
-
-    @RuntimeType
-    def AsyncCreateDep(params):
-        return Annotated[AsyncCreate, Depends(get_async_create(params))]
-
-    @RuntimeType
-    def AsyncUpdateDep(params):
-        if isinstance(params, tuple):
-            model, get_query = params
-            return Annotated[AsyncUpdate, Depends(get_async_update(model, get_query))]
-        return Annotated[AsyncUpdate, Depends(get_async_update(params))]
-
-    @RuntimeType
-    def AsyncDeleteDep(params):
-        if isinstance(params, tuple):
-            model, get_query = params
-            return Annotated[AsyncDelete, Depends(get_async_delete(model, get_query))]
-        return Annotated[AsyncDelete, Depends(get_async_delete(params))]
-
-
-__all__ = [
-    "AsyncSessionDep",
-    "AsyncRootTransactionDep",
-    "AsyncIndexDep",
-    "AsyncShowDep",
-    "AsyncCreateDep",
-    "AsyncUpdateDep",
-    "AsyncDeleteDep",
-]
+    class AsyncDeleteDep(AsyncDelete[T]): ...
