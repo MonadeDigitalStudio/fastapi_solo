@@ -1,15 +1,16 @@
 from fastapi_solo import Base, SelectModel, queryable
 import sqlalchemy as sa
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 
 @queryable
 class Post(Base):
     __tablename__ = "post"
-    id = sa.Column(sa.Integer, primary_key=True)
-    title = sa.Column(sa.String, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    rating: Mapped[int] = mapped_column(default=0)
 
-    messages = relationship("Message", back_populates="post")
+    messages: Mapped[list["Message"]] = relationship(back_populates="post")
 
     @staticmethod
     def of_ids(q: SelectModel, term: str):
@@ -21,13 +22,6 @@ class Post(Base):
         return q.filter(Post.title.contains(term))
 
 
-@queryable("name")
-class Tag(Base):
-    __tablename__ = "tag"
-    id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String, nullable=False)
-
-
 message_tag = sa.Table(
     "message_tag",
     Base.metadata,
@@ -36,12 +30,22 @@ message_tag = sa.Table(
 )
 
 
-@queryable
+@queryable("name")
+class Tag(Base):
+    __tablename__ = "tag"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    messages: Mapped[list["Message"]] = relationship(
+        secondary=message_tag, back_populates="tags"
+    )
+
+
 class Message(Base):
     __tablename__ = "message"
-    id = sa.Column(sa.Integer, primary_key=True)
-    text = sa.Column(sa.String)
-    post_id = sa.Column(sa.Integer, sa.ForeignKey("post.id"))
-    post = relationship("Post", back_populates="messages")
-
-    tags = relationship("Tag", secondary=message_tag)
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    text: Mapped[str]
+    post_id: Mapped[int] = mapped_column(sa.ForeignKey("post.id"))
+    post: Mapped["Post"] = relationship(back_populates="messages")
+    tags: Mapped[list["Tag"]] = relationship(
+        secondary=message_tag, back_populates="messages"
+    )

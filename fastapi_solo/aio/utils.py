@@ -3,8 +3,9 @@ from fastapi_solo.utils.pagination import paginate_result
 from fastapi_solo.utils.config import FastapiSoloConfig
 
 
-if TYPE_CHECKING:
-    from .database import SelectModel, Base, AsyncSession
+if TYPE_CHECKING:  # pragma: no cover
+    from fastapi_solo import SelectModel
+    from .database import Base, AsyncSession
 
     T = TypeVar("T", bound=Base)
 

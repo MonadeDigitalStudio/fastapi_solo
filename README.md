@@ -94,17 +94,17 @@ router.generate_crud(User)  # Create all the CRUD endpoints for the User model, 
 
 # or you can create more customizable endpoints injecting the right solipsistic dependencies
 @router.get("/users", response_model=PaginatedResponse[UserResponse])
-def get_users(solo: IndexDep[User]):
-    return solo.execute()
+def get_users(index: IndexDep[User]):
+    return index.execute()
 
 @router.get("/users/custom", response_model=PaginatedResponse[UserResponse])
-def get_users_custom(solo: IndexDep[User]):
-    # solo.filter[...], solo.sort[], solo.include[], solo.page, solo.size, all the query parameters are available as properties
-    q = solo.query.filter(...)
+def get_users_custom(index: IndexDep[User]):
+    # index.filter[...], index.sort[], index.include[], index.page, index.size, all the query parameters are available as properties
+    q = index.query.filter(...)
     # do some stuff
-    return solo.paginate_query(q)
-    # return paginate_query(solo.db, q, solo.page, solo.size)
-    # return paginate_result([...limited_result...], total_count, solo.page, solo.size)
+    return index.paginate_query(q)
+    # return paginate_query(index.db, q, index.page, index.size)
+    # return paginate_result([...limited_result...], total_count, index.page, index.size)
     # all these pagination functions returns a dict parsable with PaginatedResponse[T]
 
 # prefiltering example, an user can only see his own data
@@ -112,24 +112,24 @@ def user_scope(current_user = Depends(get_current_user)):
     return select(User).filter(User.id == current_user.id)
 
 @router.get("/users/scoped", response_model=PaginatedResponse[UserResponse])
-def get_users_scoped(solo: IndexDep[Annotated[User, user_scope]]):
-    return solo.execute()
+def get_users_scoped(index: IndexDep[Annotated[User, user_scope]]):
+    return index.execute()
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, solo: ShowDep[User]):
-    return solo.execute(user_id)
+def get_user(user_id: int, show: ShowDep[User]):
+    return show.execute(user_id)
 
 @router.post("/users", response_model=UserResponse)
-def create_user(user: UserCreate, solo: CreateDep[User]):
-    return solo.execute(user)
+def create_user(user: UserCreate, create: CreateDep[User]):
+    return create.execute(user)
 
 @router.put("/users/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user: UserUpdate, solo: UpdateDep[User]):
-    return solo.execute(user_id, user)
+def update_user(user_id: int, user: UserUpdate, update: UpdateDep[User]):
+    return update.execute(user_id, user)
 
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int, solo: DeleteDep[User]):
-    return solo.execute(user_id)
+def delete_user(user_id: int, delete: DeleteDep[User]):
+    return delete.execute(user_id)
 
 ```
 
@@ -240,8 +240,8 @@ def commit_inside(tx: RootTransactionDep):
 
 ```python
 @router.get("/users", response_model=PaginatedResponse[UserResponse])
-def get_users(solo: IndexDep[User]):
-return solo.execute()
+def get_users(index: IndexDep[User]):
+return index.execute()
 
 ```
 
@@ -286,6 +286,7 @@ The FastAPI Solo includes a set of utilities for testing CRUD endpoints, making 
 ```python
 import fastapi_solo.utils.testing as t
 
+t.validate_relationships(model: str | type[Base])
 t.check_filters(client, path: str, filters: dict, expected_result=None, result_count: int = 1)
 t.check_sort(client, path: str, field: str = "id")
 t.check_pagination(client, path: str, total: int, page_size: int = 2)
@@ -293,6 +294,7 @@ t.check_read(client, path: str, id, pk: str = "id", expected_result=None)
 t.check_update(client, path: str, json: Optional[dict] = None, data=None, status_code: int = 200, expected_result=None)
 t.check_create(client, path: str, json: Optional[dict] = None, data=None, status_code: int = 201, expected_result=None)
 t.check_delete(client, path: str, id, status_code: int = 204)
+t.match({"test": [1,2,3]}, {"test": t.a_list_of(int)})
 
 ```
 

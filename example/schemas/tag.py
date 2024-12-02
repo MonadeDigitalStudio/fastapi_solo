@@ -1,4 +1,4 @@
-from fastapi_solo import ResponseSchema
+from fastapi_solo import ResponseSchema, RequestSchema
 from example.models import tag as m
 
 
@@ -16,3 +16,12 @@ class Tag(ResponseSchema):
             },
         },
     }
+
+
+class TagCreate(RequestSchema):
+    __model__ = m.Tag
+
+
+class TagUpdate(RequestSchema):
+    __model__ = m.Tag
+    __all_optional__ = True

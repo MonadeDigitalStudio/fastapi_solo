@@ -1,5 +1,6 @@
 from typing import Type, TypeVar, overload
-from sqlalchemy import ScalarResult
+from sqlalchemy import ScalarResult, Select
+from sqlalchemy.orm import Query
 from sqlalchemy.ext.asyncio import (
     AsyncSession as SqlAlchemyAsyncSession,
     async_sessionmaker,
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
 from fastapi import Depends, HTTPException
 
 from ..utils.misc import log
-from ..db.database import Base, SelectModel, QueryModel, select
+from ..db.database import Base, select
 from ..exc import DbException
 
 
@@ -74,14 +75,14 @@ class AsyncSession(SqlAlchemyAsyncSession):
     """Database session with some extra methods"""
 
     @overload
-    async def exec(self, q: "SelectModel[T]") -> ScalarResult[T]: ...
+    async def exec(self, q: "Select[T]") -> ScalarResult[T]: ...
 
     @overload
     async def exec(self, q): ...
 
     async def exec(self, q, **kwargs):
         result = await super().execute(q, **kwargs)
-        if isinstance(q, (SelectModel, QueryModel)):
+        if isinstance(q, (Select, Query)):
             return result.scalars()
         return result
 

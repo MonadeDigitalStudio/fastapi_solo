@@ -1,3 +1,4 @@
+from fastapi_solo.utils.config import FastapiSoloConfig
 from tests.mock.models import Post, Tag, Message
 import fastapi_solo.utils.testing as r
 
@@ -93,7 +94,7 @@ def test_get_one_with_2includes(db, client):
 
 def test_get_all(db, client):
     mock_data(db)
-    response = client.get("/posts/?include=messages")
+    response = client.get("/posts?include=messages")
     assert response.status_code == 200
     assert r.match(
         response.json(),
@@ -128,7 +129,7 @@ def test_get_all(db, client):
     )
 
     # test pagination
-    response = client.get("/posts/?page[size]=1")
+    response = client.get("/posts?page[size]=1")
     assert response.status_code == 200
     assert r.match(
         response.json(),
@@ -144,7 +145,7 @@ def test_get_all(db, client):
     )
 
     # test filters
-    response = client.get("/posts/?filter[title]=post2")
+    response = client.get("/posts?filter[title]=post2")
     assert response.status_code == 200
     assert r.match(
         response.json(),
@@ -152,12 +153,12 @@ def test_get_all(db, client):
     )
 
     # test sort
-    response = client.get("/posts/?sort=-title")
+    response = client.get("/posts?sort=-title")
     assert response.status_code == 200
     assert r.match(response.json(), {"data": [{"id": 2}, {"id": 1}]})
 
     # test includes
-    response = client.get("/posts/?include=messages.tags")
+    response = client.get("/posts?include=messages.tags")
     assert response.status_code == 200
     assert r.match(
         response.json(),
@@ -212,12 +213,33 @@ def test_get_all_scoped(db, client):
     )
 
 
+def test_get_all_scoped2(db, client):
+    mock_data(db)
+    response = client.get("/posts/scoped2")
+    assert response.status_code == 200
+    assert r.match(
+        response.json(),
+        {
+            "data": [],
+        },
+    )
+
+
+def test_create_post(client, db):
+    r.check_create(client, "/posts", {"title": "test_title"})
+
+
 def test_create_fail(client):
     response = client.post(
         "/posts/",
         json={"id": "not_an_int"},
     )
     assert response.status_code == 422
+
+
+def test_update_post(client, db):
+    post = Post(title="test").save(db)
+    r.check_update(client, f"/posts/{post.id}", {"title": "aaa"})
 
 
 def test_update_fail(client):
@@ -248,31 +270,75 @@ def test_update_add_relationship(db, client):
     )
 
 
+def test_update_scoped(db, client):
+    p, *_ = mock_data(db)
+    response = client.put(f"/posts/{p.id}/scopedput", json={"title": "new title"})
+    assert response.status_code == 404
+    p = Post.create(db, title="test1")
+    response = client.put(f"/posts/{p.id}/scopedput", json={"title": "new title"})
+    assert response.status_code == 200
+    assert r.match(
+        response.json(),
+        {"id": p.id, "title": "new title"},
+    )
+
+
+def test_update_scoped2(db, client):
+    p, *_ = mock_data(db)
+    response = client.put(f"/posts/{p.id}/scopedput2", json={"title": "new title"})
+    assert response.status_code == 404
+
+
 def test_read_posts(client, db):
     posts = [Post(title=f"test_{i}").save(db) for i in range(10)]
-    r.check_filters(client, "/posts/", {"title_like": "_1"}, {"title": "test_1"})
+    r.check_filters(client, "/posts", {"title_like": "_1"}, {"title": "test_1"})
     r.check_filters(
-        client, "/posts/", {"ids": f"{posts[0].id},{posts[1].id}"}, result_count=2
+        client, "/posts", {"ids": f"{posts[0].id},{posts[1].id}"}, result_count=2
     )
-    r.check_sort(client, "/posts/")
-    r.check_pagination(client, "/posts/", 10)
+    r.check_sort(client, "/posts")
+    r.check_pagination(client, "/posts", 10)
 
 
 def test_read_post(client, db):
     post = Post(title="test").save(db)
-    r.check_read(client, "/posts/", post.id)
+    r.check_read(client, "/posts", post.id)
 
 
-def test_create_post(client, db):
-    r.check_create(client, "/posts/", {"title": "test_title"})
+def test_read_post_scoped(client, db):
+    p, *_ = mock_data(db)
+    response = client.get(f"/posts/{p.id}/scoped")
+    assert response.status_code == 404
+    p = Post.create(db, title="test1")
+    response = client.get(f"/posts/{p.id}/scoped")
+    assert response.status_code == 200
+    assert r.match(
+        response.json(),
+        {"id": p.id, "title": "test1"},
+    )
 
 
-def test_update_post(client, db):
-    post = Post(title="test").save(db)
-    r.check_update(client, f"/posts/{post.id}", {"title": "aaa"})
+def test_read_post_scoped2(client, db):
+    p, *_ = mock_data(db)
+    response = client.get(f"/posts/{p.id}/scoped2")
+    assert response.status_code == 404
 
 
 def test_remove_post(client, db):
     post = Post(title="test").save(db)
-    r.check_delete(client, "/posts/", post.id)
+    r.check_delete(client, "/posts", post.id)
     assert not db.get(Post, post.id)
+
+
+def test_remove_post_scoped(client, db):
+    p, *_ = mock_data(db)
+    response = client.delete(f"/posts/{p.id}/scopeddelete")
+    assert response.status_code == 404
+    p = Post.create(db, title="test1")
+    response = client.delete(f"/posts/{p.id}/scopeddelete")
+    assert response.status_code == FastapiSoloConfig.delete_status_code
+
+
+def test_remove_post_scoped2(client, db):
+    p, *_ = mock_data(db)
+    response = client.delete(f"/posts/{p.id}/scopeddelete2")
+    assert response.status_code == 404

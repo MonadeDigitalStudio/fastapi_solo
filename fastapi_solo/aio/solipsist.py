@@ -1,6 +1,7 @@
 from typing import (
     TYPE_CHECKING,
     Callable,
+    Coroutine,
     Union,
     List,
     Type,
@@ -11,9 +12,11 @@ from typing import (
     Optional,
     Any,
 )
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Response
 from pydantic import BaseModel
-from fastapi_solo.serialization.schemas import (
+from fastapi_solo import (
+    FastapiSoloConfig,
+    SelectModel,
     CommonQueryParams,
     PaginationParams,
     IncludesParams,
@@ -22,7 +25,6 @@ from fastapi_solo.serialization.schemas import (
 from .database import (
     Base,
     select,
-    SelectModel,
     AsyncSession,
     get_async_db,
 )
@@ -87,7 +89,7 @@ class AsyncSolo(Generic[T]):
         pk = get_single_pk(self._model)
         return self.base_query.includes(*self.includes).filter(pk == id)
 
-    async def get_element(self, id) -> Optional[T]:
+    async def get_element(self, id):
         """Returns the element filtered by id with includes from query params"""
         return (await self.db.exec(self.query_one(id))).one_or_none()
 
@@ -127,7 +129,7 @@ class AsyncIndex(AsyncSolo[T]):
         self.page = pagination.page
         self.size: int | str = pagination.size
 
-    async def execute(self, paginate=True) -> Any:
+    async def execute(self, paginate=True):
         """Executes the query (filtered, paginated and with includes) and returns the result in a dict for rendering the PaginatedResponse
         params:
         - paginate: if the result should be paginated or not
@@ -150,7 +152,7 @@ class AsyncShow(AsyncSolo[T]):
         self.db = db
         self.includes = includes
 
-    async def execute(self, id: Any) -> T:
+    async def execute(self, id: Any) -> Coroutine[Any, Any, T]:
         """Executes the query and returns the element by id
         params:
         - id: the id of the element to return
@@ -169,13 +171,16 @@ class AsyncShow(AsyncSolo[T]):
 class AsyncCreate(AsyncSolo[T]):
     def __init__(
         self,
+        response: Response,
         db: AsyncSession = Depends(get_async_db),
         includes: IncludesParams = Depends(IncludesParams),
     ):
         self.db = db
         self.includes = includes
+        if not response.status_code:
+            response.status_code = 201
 
-    async def execute(self, obj: BaseReq) -> T:
+    async def execute(self, obj: BaseReq) -> Coroutine[Any, Any, T]:
         """Executes the insert query
         params:
         - obj: the object to insert
@@ -200,7 +205,7 @@ class AsyncUpdate(AsyncSolo[T]):
         self.db = db
         self.includes = includes
 
-    async def execute(self, id, obj: BaseReq) -> T:
+    async def execute(self, id, obj: BaseReq) -> Coroutine[Any, Any, T]:
         """Executes the update query
         params:
         - id: the id of the element to update
@@ -223,9 +228,12 @@ class AsyncUpdate(AsyncSolo[T]):
 class AsyncDelete(AsyncSolo[T]):
     def __init__(
         self,
+        response: Response,
         db: AsyncSession = Depends(get_async_db),
     ):
         self.db = db
+        if not response.status_code:
+            response.status_code = FastapiSoloConfig.delete_status_code
 
     async def execute(self, id):
         """Executes the delete query
