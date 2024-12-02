@@ -216,8 +216,10 @@ class Session(SqlAlchemySession):
     def exec(self, q): ...
 
     def exec(self, q, **kwargs):
+        if isinstance(q, Query):
+            return q
         result = super().execute(q, **kwargs)
-        if isinstance(q, (Select, Query)):
+        if isinstance(q, Select):
             return result.scalars()
         return result
 
