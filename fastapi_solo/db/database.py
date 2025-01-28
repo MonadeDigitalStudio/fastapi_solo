@@ -223,7 +223,7 @@ class Session(SqlAlchemySession):
             return result.scalars()
         return result
 
-    def find_or_create(self, model: Type[Base], find_by=None, flush=True, **kwargs):
+    def find_or_create(self, _model: Type[Base], find_by=None, flush=True, **kwargs):
         """Find or create a model
 
         it doesnt update the model if it already exists
@@ -240,12 +240,12 @@ class Session(SqlAlchemySession):
         user = User.find_or_create(find_by=["name"], name="Albert")
         ```
         """
-        q = select(model)
+        q = select(_model)
         filters = kwargs
         if find_by:
             filters = {k: v for k, v in kwargs.items() if k in find_by}
         else:
-            pks = list(map(lambda x: x.name, model.__mapper__.primary_key))
+            pks = list(map(lambda x: x.name, _model.__mapper__.primary_key))
             if all(k in kwargs for k in pks):
                 filters = {k: v for k, v in kwargs.items() if k in pks}
 
@@ -253,13 +253,13 @@ class Session(SqlAlchemySession):
 
         ret = self.exec(q).one_or_none()
         if not ret:
-            ret = model(**kwargs)
+            ret = _model(**kwargs)
             self.add(ret)
             if flush:
                 self.flush()
         return ret
 
-    def upsert(self, model: Type[Base], find_by=None, flush=True, **kwargs):
+    def upsert(self, _model: Type[Base], find_by=None, flush=True, **kwargs):
         """Update or create a model
 
         it will update the model if it already exists before returning it
@@ -278,10 +278,10 @@ class Session(SqlAlchemySession):
         ```
         """
         if not find_by:
-            pks = list(map(lambda x: x.name, model.__mapper__.primary_key))
+            pks = list(map(lambda x: x.name, _model.__mapper__.primary_key))
             if not all(k in kwargs for k in pks):
                 raise DbException("find_by or primary key must be provided")
-        e = self.find_or_create(model, find_by=find_by, flush=False, **kwargs)
+        e = self.find_or_create(_model, find_by=find_by, flush=False, **kwargs)
         for k, v in kwargs.items():
             setattr(e, k, v)
         if flush:
