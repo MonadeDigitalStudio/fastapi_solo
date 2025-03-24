@@ -3,9 +3,11 @@ from example.models import tag as m
 
 
 class Tag(ResponseSchema):
-    __model__ = m.Tag
-    __include__ = {
+    model = m.Tag
+    include = {
         "name": True,
+        "asd": True,
+        "asd2": True,
         "messages": {
             "post_id": True,
             "text": True,
@@ -19,9 +21,9 @@ class Tag(ResponseSchema):
 
 
 class TagCreate(RequestSchema):
-    __model__ = m.Tag
+    model = m.Tag
 
 
 class TagUpdate(RequestSchema):
-    __model__ = m.Tag
-    __all_optional__ = True
+    model = m.Tag
+    all_optional = True

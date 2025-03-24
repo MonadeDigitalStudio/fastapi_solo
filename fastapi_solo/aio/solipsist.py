@@ -28,7 +28,7 @@ from .database import (
     AsyncSession,
     get_async_db,
 )
-from ..utils.misc import VOID_CALLBACK
+from ..utils.misc import VOID_CALLBACK, log
 from ..utils.db import get_single_pk
 from .utils import apaginate_query
 
@@ -87,6 +87,13 @@ class AsyncSolo(Generic[T]):
     def query_one(self, id):
         """Returns a query object filtered by id with includes from query params"""
         pk = get_single_pk(self._model)
+        if pk.type.python_type != type(id):
+            try:
+                id = pk.type.python_type(id)
+            except Exception:
+                log.warning(
+                    f"Could not convert {id} to {pk.type.python_type} for {self._model.__name__}"
+                )
         return self.base_query.includes(*self.includes).filter(pk == id)
 
     async def get_element(self, id):
@@ -250,11 +257,15 @@ class AsyncDelete(AsyncSolo[T]):
 
 
 def get_async_solo(
-    model: Base,
+    model: Type[Base],
     solo_class: Type[AsyncSolo],
     get_query: Callable[..., SelectModel] = VOID_CALLBACK,
 ):
-    if solo_class == AsyncIndex:
+    if (
+        FastapiSoloConfig.swagger_filters
+        and solo_class == AsyncIndex
+        and hasattr(model, "__queryable__")
+    ):
         swag = get_swagger_filters(model)
     else:
         swag = VOID_CALLBACK
@@ -272,25 +283,29 @@ def get_async_solo(
     return _dep
 
 
-def get_async_index(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_async_index(
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
+):
     return get_async_solo(model, AsyncIndex, get_query)
 
 
-def get_async_show(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_async_show(
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
+):
     return get_async_solo(model, AsyncShow, get_query)
 
 
-def get_async_create(model: Base):
+def get_async_create(model: Type[Base]):
     return get_async_solo(model, AsyncCreate)
 
 
 def get_async_update(
-    model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
 ):
     return get_async_solo(model, AsyncUpdate, get_query)
 
 
 def get_async_delete(
-    model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
 ):
     return get_async_solo(model, AsyncDelete, get_query)

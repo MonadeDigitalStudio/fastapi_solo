@@ -2,21 +2,21 @@ from fastapi_solo import ResponseSchema
 
 
 class PolyAResponse(ResponseSchema):
-    __model__ = "PolyA"
+    model = "PolyA"
 
 
 class PolyBResponse(ResponseSchema):
-    __model__ = "PolyB"
+    model = "PolyB"
 
 
 class PolyA2Response(ResponseSchema):
-    __model__ = "PolyA"
-    __exclude__ = ["type"]
+    model = "PolyA"
+    exclude = ["type"]
 
 
 class PolyB2Response(ResponseSchema):
-    __model__ = "PolyB"
-    __exclude__ = ["type"]
+    model = "PolyB"
+    exclude = ["type"]
 
 
 class AnyPoly(PolyAResponse, PolyBResponse):

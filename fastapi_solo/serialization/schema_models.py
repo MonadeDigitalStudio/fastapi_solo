@@ -16,6 +16,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from hashlib import md5
 from ..db.database import Base
 from ..utils.db import get_single_pk
+from ..utils.config import FastapiSoloConfig
 
 from .schemas import BaseSchema, HasMany, HasOne, Lazy
 
@@ -84,7 +85,9 @@ def _build_relationship(
     include_virtuals,
     use_dynamic_relationships,
 ):
-    rel = model.__mapper__.relationships[rel_key]
+    rel = model.__mapper__.relationships.get(rel_key)
+    if not rel:
+        return
     model_rel = rel.mapper.class_
     r = {}
     e = {}
@@ -226,7 +229,8 @@ def response_schema(
     all_optional: bool = True,
     include_virtuals: bool = True,
     use_dynamic_relationships: bool = True,
-    lazy_first_level: bool = False,
+    lazy_first_level: bool | None = None,
+    auto_include_relationships: bool = False,
 ) -> Any:
     """Return a schema for the given model
 
@@ -275,6 +279,7 @@ def response_schema(
         include_virtuals,
         use_dynamic_relationships,
         lazy_first_level,
+        auto_include_relationships=auto_include_relationships,
     )
 
 
@@ -287,13 +292,20 @@ def _generic_schema(
     all_optional: bool = True,
     include_virtuals: bool = True,
     use_dynamic_relationships: bool = True,
-    lazy_first_level: bool = False,
+    lazy_first_level: bool | None = None,
     base_name: Optional[str] = None,
+    auto_include_relationships: bool = False,
 ):
     exclude = _normalize_sym_list(exclude)
     include = _normalize_sym_list(include)
     relationships = _normalize_sym_list(relationships)
     extras = _normalize_sym_list(extras)
+    if auto_include_relationships:
+        if isinstance(model, str):
+            model = Base.get_model(model)
+        for rel in model.__mapper__.relationships.keys():  # type: ignore
+            if rel not in relationships:
+                relationships[rel] = True
     return _generate_schema(
         model,
         exclude,
@@ -317,9 +329,11 @@ def _generate_schema(
     all_optional: bool = True,
     include_virtuals: bool = True,
     use_dynamic_relationships: bool = True,
-    lazy_first_level: bool = False,
+    lazy_first_level: bool | None = None,
     base_name: Optional[str] = None,
 ) -> Any:
+    if lazy_first_level is None:
+        lazy_first_level = not FastapiSoloConfig.include_first_level_relationships
     if include:
         relationships = {
             k: v for k, v in include.items() if isinstance(v, (dict, set, tuple, list))
@@ -354,12 +368,12 @@ def _generate_schema(
         __schema_cache[name] = schema
 
     if lazy_first_level:
-        schema = Lazy[schema]  # type: ignore
+        schema = Lazy[schema]
     return schema
 
 
 def request_schema(
-    model: Base,
+    model: Type[Base],
     all_optional: bool = False,
     exclude: SymList = {},
     include: SymList = {},
@@ -379,6 +393,7 @@ def request_schema(
         relationships,
         extras,
         all_optional,
+        False,
         False,
         False,
     )
@@ -402,45 +417,48 @@ _EXCL_KEYS = {
 class _MetaSchema(type):
     def __new__(cls, name, bases, attrs):
         if bases:
-            model = attrs.get("__model__", name)
+            model = attrs.get("model", name)
             cls._fix_attrs(attrs)
             attrs = {**bases[0].__dict__, **attrs}
-            if attrs["__exclude_pk__"]:
+            if attrs["exclude_pk"]:
                 if isinstance(model, str):
                     model = Base.get_model(model)
                 pk = get_single_pk(model).name
-                if not isinstance(attrs["__exclude__"], dict):
-                    attrs["__exclude__"] = {k: True for k in attrs["__exclude__"]}
-                attrs["__exclude__"] = {pk: True, **attrs["__exclude__"]}
-            if attrs["__exclude_timestamps__"]:
-                if not isinstance(attrs["__exclude__"], dict):
-                    attrs["__exclude__"] = {k: True for k in attrs["__exclude__"]}
-                attrs["__exclude__"] = {
+                if not isinstance(attrs["exclude"], dict):
+                    attrs["exclude"] = {k: True for k in attrs["exclude"]}
+                attrs["exclude"] = {pk: True, **attrs["exclude"]}
+            if attrs["exclude_timestamps"]:
+                if not isinstance(attrs["exclude"], dict):
+                    attrs["exclude"] = {k: True for k in attrs["exclude"]}
+                attrs["exclude"] = {
                     "created_at": True,
                     "updated_at": True,
-                    **attrs["__exclude__"],
+                    **attrs["exclude"],
                 }
 
             return _generic_schema(
                 model=model,
-                include=attrs["__include__"],
-                exclude=attrs["__exclude__"],
-                relationships=attrs["__relationships__"],
-                extras=attrs["__extras__"],
-                all_optional=attrs["__all_optional__"],
-                include_virtuals=attrs["__include_virtuals__"],
-                use_dynamic_relationships=attrs["__use_dynamic_relationships__"],
-                lazy_first_level=attrs["__lazy__"],
+                include=attrs["include"],
+                exclude=attrs["exclude"],
+                relationships=attrs["relationships"],
+                extras=attrs["extras"],
+                all_optional=attrs["all_optional"],
+                include_virtuals=attrs["include_virtuals"],
+                use_dynamic_relationships=attrs["use_dynamic_relationships"],
+                lazy_first_level=attrs["lazy"],
                 base_name=name,
+                auto_include_relationships=attrs.get(
+                    "auto_include_relationships", False
+                ),
             )
         return super().__new__(cls, name, bases, attrs)
 
     @staticmethod
     def _fix_attrs(attrs):
         if attrs.get("__annotations__"):
-            if not attrs.get("__extras__"):
-                attrs["__extras__"] = {}
-            attrs["__extras__"].update(
+            if not attrs.get("extras"):
+                attrs["extras"] = {}
+            attrs["extras"].update(
                 {
                     k: v
                     for k, v in attrs["__annotations__"].items()
@@ -453,46 +471,47 @@ class ResponseSchema(metaclass=_MetaSchema):
     """Base class for responses
 
     class variables:
-    - __model__: the model to create the schema for
-    - __exclude__: a dictionary of fields to exclude from the schema (blacklist)
-    - __include__: a dictionary of fields to include in the schema (whitelist)
-    - __relationships__: a dictionary of relationships to include in the schema
-    - __extras__: a dictionary of extra fields to add to the schema
-    - __all_optional__: whether to make all the fields optional or follow the model definition
-    - __include_virtuals__: whether to include virtual properties in the schema
-    - __use_dynamic_relationships__: set to False to resolve all the lazy relationships in serialization
-    - __lazy__: set to True lazy resolve relationships from the first level
-    - __exclude_pk__: set to True to exclude the primary key from the schema
-    - __exclude_timestamps__: set to True to exclude the timestamps from the schema
-    - **extras: extra fields to add to the schema
+    - model: the model to create the schema for
+    - exclude: a dictionary of fields to exclude from the schema (blacklist)
+    - include: a dictionary of fields to include in the schema (whitelist)
+    - relationships: a dictionary of relationships to include in the schema
+    - extras: a dictionary of extra fields to add to the schema
+    - all_optional: whether to make all the fields optional or follow the model definition
+    - include_virtuals: whether to include virtual properties in the schema
+    - use_dynamic_relationships: set to False to resolve all the lazy relationships in serialization
+    - lazy: set to True lazy resolve relationships from the first level
+    - exclude_pk: set to True to exclude the primary key from the schema
+    - exclude_timestamps: set to True to exclude the timestamps from the schema
+    - **kwargs: extra fields to add to the schema
 
     **Example:**
     ```
     class Post(ResponseSchema):
-        __model__ = "Post"
-        __relationships__ = {
+        model = "Post"
+        relationships = {
             "messages": {"tags"},
         }
-        __extras__ = {"messages": {"extra_field": str}}
+        extras = {"messages": {"extra_field": str}}
 
         extra_field_2: str
     ```
     """
 
-    __model__: Type[Base] | str
-    __relationships__: SymList = {}
-    __include__: SymList = {}
-    __exclude__: SymList = {}
-    __extras__: Dict[str, type | dict] = {}
-    __all_optional__: bool = True
-    __include_virtuals__: bool = True
-    __use_dynamic_relationships__: bool = True
-    __lazy__: bool = True
-    __exclude_pk__: bool = False
-    __exclude_timestamps__ = False
+    model: Type[Base] | str
+    relationships: SymList = {}
+    include: SymList = {}
+    exclude: SymList = {}
+    extras: Dict[str, type | dict] = {}
+    all_optional: bool = True
+    include_virtuals: bool = True
+    use_dynamic_relationships: bool = True
+    lazy: bool | None = None
+    exclude_pk: bool = False
+    exclude_timestamps = False
+    auto_include_relationships = False
 
     @classmethod
-    def render_model(cls, result, lazy_first_level: bool = False): ...
+    def render_model(cls, result, lazy_first_level: bool | None = None): ...
 
     @classmethod
     def render_json(
@@ -500,7 +519,7 @@ class ResponseSchema(metaclass=_MetaSchema):
         result,
         exclude: Optional[SymList] = None,
         include: Optional[SymList] = None,
-        lazy_first_level: bool = False,
+        lazy_first_level: bool | None = None,
     ): ...
 
 
@@ -510,22 +529,22 @@ class RequestSchema(metaclass=_MetaSchema):
     **Example:**
     ```
     class PostUpdate(RequestSchema):
-        __model__ = "Post"
-        __all_optional__ = True
-        __extras__ = {"messages": List[int]}
+        model = "Post"
+        all_optional = True
+        extras = {"messages": List[int]}
     ```
     """
 
-    __model__: Type[Base] | str
-    __include__: SymList = {}
-    __exclude__: SymList = {}
-    __extras__: Dict[str, type | dict] = {}
-    __all_optional__: bool = False
-    __exclude_pk__: bool = True
-    __exclude_timestamps__ = True
+    model: Type[Base] | str
+    include: SymList = {}
+    exclude: SymList = {}
+    extras: Dict[str, type | dict] = {}
+    all_optional: bool = False
+    exclude_pk: bool = True
+    exclude_timestamps = True
 
     # private, use ResponseSchema instead if you need to customize this
-    __relationships__: SymList = {}
-    __include_virtuals__: bool = False
-    __use_dynamic_relationships__: bool = False
-    __lazy__: bool = False
+    relationships: SymList = {}
+    include_virtuals: bool = False
+    use_dynamic_relationships: bool = False
+    lazy: bool = False

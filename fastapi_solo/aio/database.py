@@ -54,6 +54,7 @@ class AsyncSessionFactory:
             class_=AsyncSession,
             **kwargs,
         )
+        cls.engine = engine
 
     @classmethod
     def open(cls, **kwargs):

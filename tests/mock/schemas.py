@@ -11,20 +11,20 @@ from tests.mock import models as m
 
 
 class MessageUpdate(RequestSchema):
-    __model__ = m.Message
-    __all_optional__ = True
+    model = m.Message
+    all_optional = True
     tags: List[int]
 
 
 class PostResponse(ResponseSchema):
-    __model__ = "Post"
-    __relationships__ = {
+    model = "Post"
+    relationships = {
         "messages": {"tags"},
     }
 
 
 class PostCreate(RequestSchema):
-    __model__ = m.Post
+    model = m.Post
     messages: Optional[List[int]]
 
 

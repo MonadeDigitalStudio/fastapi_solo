@@ -20,4 +20,4 @@ from .utils import apaginate_query as apaginate_query
 
 from .inject import async_injector as async_injector
 
-from .monkeypatch import Base as Base
+from .monkeypatch import Base as Base, Router as Router

@@ -242,11 +242,15 @@ class Delete(Solo[T]):
 
 
 def get_solo(
-    model: Base,
+    model: Type[Base],
     solo_class: Type[Solo],
     get_query: Callable[..., SelectModel] = VOID_CALLBACK,
 ):
-    if solo_class == Index and hasattr(model, "__queryable__"):
+    if (
+        FastapiSoloConfig.swagger_filters
+        and solo_class == Index
+        and hasattr(model, "__queryable__")
+    ):
         swag = get_swagger_filters(model)
     else:
         swag = VOID_CALLBACK
@@ -264,21 +268,25 @@ def get_solo(
     return _dep
 
 
-def get_index(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_index(model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK):
     return get_solo(model, Index, get_query)
 
 
-def get_show(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_show(model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK):
     return get_solo(model, Show, get_query)
 
 
-def get_create(model: Base):
+def get_create(model: Type[Base]):
     return get_solo(model, Create)
 
 
-def get_update(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_update(
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
+):
     return get_solo(model, Update, get_query)
 
 
-def get_delete(model: Base, get_query: Callable[..., SelectModel] = VOID_CALLBACK):
+def get_delete(
+    model: Type[Base], get_query: Callable[..., SelectModel] = VOID_CALLBACK
+):
     return get_solo(model, Delete, get_query)

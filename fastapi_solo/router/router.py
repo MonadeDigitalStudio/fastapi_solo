@@ -56,7 +56,7 @@ class Router(APIRouter):
 
     def generate_crud(
         self,
-        model: Base,
+        model: Type[Base],
         *,
         response_schema: Optional[RespModel] = None,
         create_schema: Optional[RespModel] = None,
@@ -73,6 +73,7 @@ class Router(APIRouter):
         delete_dependencies: List = [],
         dependencies: List = [],
         get_query: Callable[..., SelectModel] = VOID_CALLBACK,
+        auto_include_relationships: bool = False,
     ):
         """Generate all the CRUD routes for a model
 
@@ -85,12 +86,14 @@ class Router(APIRouter):
         - [*]_dependencies: dependencies to add to the [*] route
         - dependencies: dependencies to add to all routes
         - get_query: an injectable query object to use as base for queries
+        - auto_include_relationships: include first level relationships in response schema (works only if response_schema is not provided)
         """
         self._init_generator(
             model,
             response_schema=response_schema,
             create_schema=create_schema,
             update_schema=update_schema,
+            auto_include_relationships=auto_include_relationships,
         )
         # get all
         if generate_get_all:
@@ -122,17 +125,20 @@ class Router(APIRouter):
 
     def _init_generator(
         self,
-        model: Base,
+        model: Type[Base],
         response_schema: Optional[RespModel] = None,
         create_schema: Optional[RespModel] = None,
         update_schema: Optional[RespModel] = None,
+        auto_include_relationships: bool = False,
     ):
         self.model = model
         self.response_schema = response_schema
         self.create_schema = create_schema
         self.update_schema = update_schema
         if not response_schema:
-            self.response_schema = gen_response_schema(model)
+            self.response_schema = gen_response_schema(
+                model, auto_include_relationships=auto_include_relationships
+            )
         if not create_schema:
             self.create_schema = gen_request_schema(model)
         if not update_schema:

@@ -6,21 +6,21 @@ from fastapi_solo import (
 
 
 class MessageCreate(RequestSchema):
-    __model__ = "Message"
+    model = "Message"
 
     tags: Optional[List[int]]
 
 
 class MessageUpdate(RequestSchema):
-    __model__ = "Message"
-    __all_optional__ = True
+    model = "Message"
+    all_optional = True
 
     tags: List[int]
 
 
 class Message(ResponseSchema):
-    __model__ = "Message"
-    __relationships__ = {
+    model = "Message"
+    relationships = {
         "tags": {"messages"},
         "post": {"messages"},
     }

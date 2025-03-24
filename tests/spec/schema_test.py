@@ -18,7 +18,7 @@ def mock_data(db):
 def test_render_schema_base(db):
     p1, *_ = mock_data(db)
     schema = response_schema(Post)
-    json = schema.render_json(p1)
+    json = schema.render_json(p1, lazy_first_level=True)
     assert json["id"] == p1.id
     assert json["title"] == p1.title
     assert json.get("messages") == None

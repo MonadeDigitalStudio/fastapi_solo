@@ -9,8 +9,8 @@ class PostUpdate(BaseSchema):
 
 
 class Post(ResponseSchema):
-    __model__ = "Post"
-    __include__ = (
+    model = "Post"
+    include = (
         "id",
         "title",
         {
@@ -24,19 +24,19 @@ class Post(ResponseSchema):
             )
         },
     )
-    __extras__ = {
+    extras = {
         "messages": {"tags": {"asd3": List[str]}},
     }
 
 
 class PostCreate(RequestSchema):
-    __model__ = "Post"
+    model = "Post"
     messages: Optional[List[int]]
 
 
 class PostEnriched(ResponseSchema):
-    __model__ = "Post"
-    __relationships__ = {
+    model = "Post"
+    relationships = {
         "messages": {"tags", "post"},
     }
     extras = {"messages": {"extra_field": str}}

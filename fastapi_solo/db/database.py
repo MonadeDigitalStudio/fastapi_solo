@@ -11,7 +11,7 @@ from typing import (
 from typing_extensions import deprecated
 from sqlalchemy import ScalarResult, func, Engine, Select
 from sqlalchemy.orm import (
-    declarative_base,
+    declarative_base as sqla_declarative_base,
     sessionmaker,
     Query,
     object_session,
@@ -69,6 +69,7 @@ class SessionFactory:
             query_cls=QueryModel,
             **kwargs,
         )
+        cls.engine = engine
 
     @classmethod
     @contextmanager
@@ -80,10 +81,7 @@ class SessionFactory:
             session.close()
 
 
-class Base(declarative_base()):
-    """Base class for all the models"""
-
-    __abstract__ = True
+class _Base:
 
     def save(
         self,
@@ -152,12 +150,38 @@ class Base(declarative_base()):
         return model
 
     @classmethod
-    def get_model(cls, model: str):
-        models = cls.registry._class_registry.values()
+    def get_model(cls, model: str) -> Type["Base"]:
+        models = cls.registry._class_registry.values()  # type: ignore
         for m in models:
             if hasattr(m, "__name__") and m.__name__ == model:
                 return m
         raise DbException(f"Model {model} not found")
+
+
+def declarative_base(**kwargs) -> Any:
+    """Create a new declarative base class for the models
+
+    **Example:**
+    ```
+    from fastapi_solo import declarative_base
+
+    Base = declarative_base()
+    ```
+
+    """
+
+    return sqla_declarative_base(cls=_Base, **kwargs)
+
+
+class Base(declarative_base()):
+    """Base class for all the models"""
+
+    __abstract__ = True
+
+
+if TYPE_CHECKING:
+
+    Base = type("Base", (Base, _Base), {})
 
 
 class BaseWithTS(Base):

@@ -144,11 +144,17 @@ if TYPE_CHECKING:
 T = TypeVar("T", bound=Union[BaseModel, "ResponseSchema"])
 
 
-class PaginatedResponse(BaseSchema, Generic[T]):
+class Page(BaseSchema, Generic[T]):
     """A standard paginated response schema"""
 
     data: List[T]
     meta: Optional[PaginationMeta] = None
+
+
+class PaginatedResponse(Page[T]):
+    """A standard paginated response schema (alias for Page)"""
+
+    pass
 
 
 class PaginationParams:
@@ -226,10 +232,6 @@ class CommonQueryParams:
 # models relationships
 
 
-def OpenStruct(**kwargs):
-    return namedtuple("OpenStruct", kwargs.keys())(**kwargs)
-
-
 def lazy_validator(value):
     if not isinstance(value, Base):
         return value
@@ -242,15 +244,13 @@ def lazy_validator(value):
     }
     unloaded = model_unloaded | proxy_unloaded
 
-    d = {
+    return {
         k: getattr(value, k)
         for k in dir(value)
         if not k.startswith("_")
         and k not in unloaded
         and not callable(getattr(type(value), k, None))
     }
-
-    return OpenStruct(**d)
 
 
 @RuntimeType
@@ -307,7 +307,7 @@ def HasMany(parameter):
     ]
 
 
-def _get_query_params_for_model(model: Base):
+def _get_query_params_for_model(model: Type[Base]):
     columns = model.__queryable__ if hasattr(model, "__queryable__") else []
     if columns == "*":
         columns = map(lambda x: x.name, model.__mapper__.c)
@@ -318,7 +318,7 @@ def _get_query_params_for_model(model: Base):
     )
 
 
-def get_swagger_filters(*models: Base):
+def get_swagger_filters(*models: Type[Base]):
     """Return an injectable dependency to add the swagger documentation for all the filters available on the models"""
     query_params = []
     for model in models:
