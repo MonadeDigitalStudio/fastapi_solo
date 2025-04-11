@@ -421,7 +421,7 @@ class SelectModel(Select[T], Queryable):
         return select(func.count()).select_from(self.subquery())
 
 
-def select(*entities: T | Any) -> SelectModel[T]:
+def select(*entities: Type[T] | Any) -> SelectModel[T]:
     return SelectModel(*entities)
 
 
