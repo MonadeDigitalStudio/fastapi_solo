@@ -162,6 +162,13 @@ class Queryable:
         if sort:
             is_desc = sort[0] == "-"
             sort = sort[1:] if is_desc else sort
+            if "[" in sort and sort.endswith("]"):
+                col = sort.split("[")[0]
+                json_key = sort.split("[", 1)[1].removesuffix("]")
+                attr = self._get_model_attr(self.model, f"by_{col}")
+                if attr and callable(attr):
+                    q = attr(q, json_key, is_desc)
+                return q
             attr = self._get_model_attr(self.model, f"by_{sort}")
             if attr and callable(attr):
                 q = attr(q, is_desc)
