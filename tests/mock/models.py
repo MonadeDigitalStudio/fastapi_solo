@@ -9,6 +9,7 @@ class Post(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str]
     rating: Mapped[int] = mapped_column(default=0)
+    json_field: Mapped[dict] = mapped_column(sa.JSON, default={})
 
     messages: Mapped[list["Message"]] = relationship(back_populates="post")
 
@@ -20,6 +21,17 @@ class Post(Base):
     @staticmethod
     def of_title_like(q: SelectModel, term: str):
         return q.filter(Post.title.contains(term))
+
+    @staticmethod
+    def of_json_filter(q: SelectModel, key: str, value: str):
+        return q.filter(Post.json_field[key].icontains(value))
+
+    @staticmethod
+    def by_json_order(q: SelectModel, key: str, is_desc: bool):
+        field = Post.json_field[key]
+        if is_desc:
+            field = field.desc()
+        return q.order_by(field)
 
 
 message_tag = sa.Table(

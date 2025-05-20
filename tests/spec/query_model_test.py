@@ -77,6 +77,22 @@ def test_select_query_by(db):
     assert len(pt) == 2
 
 
+def test_query_by_json(db):
+    Post(title="post", json_field={"test": "example"}).save(db)
+    Post(title="post2", json_field={"test": "value"}).save(db)
+    filter = {"json_filter[test]": "example"}
+    pt = db.query(Post).query_by(**filter).all()
+    assert len(pt) == 1
+
+
+def test_select_query_by_json(db):
+    Post(title="post", json_field={"test": "example"}).save(db)
+    Post(title="post2", json_field={"test": "value"}).save(db)
+    filter = {"json_filter[test]": "example"}
+    pt = db.exec(select(Post).query_by(**filter)).all()
+    assert len(pt) == 1
+
+
 def test_only_decorated_query_by(db):
     p1, p2, t1, t2, m1, m2, m3 = mock_data(db)
 
@@ -133,6 +149,34 @@ def test_select_sort_by(db):
     pt = db.exec(q).all()
     assert pt[0].id == p2.id
     assert pt[1].id == p1.id
+
+
+def test_sort_by_json(db):
+    Post(title="post", json_field={"test": "example"}).save(db)
+    Post(title="post2", json_field={"test": "value"}).save(db)
+    pt = db.query(Post).sort("json_order[test]").all()
+    assert len(pt) == 2
+    assert pt[0].json_field["test"] == "example"
+    assert pt[1].json_field["test"] == "value"
+
+    pt = db.query(Post).sort("-json_order[test]").all()
+    assert len(pt) == 2
+    assert pt[0].json_field["test"] == "value"
+    assert pt[1].json_field["test"] == "example"
+
+
+def test_select_sort_by_json(db):
+    Post(title="post", json_field={"test": "example"}).save(db)
+    Post(title="post2", json_field={"test": "value"}).save(db)
+    pt = db.exec(select(Post).sort("json_order[test]")).all()
+    assert len(pt) == 2
+    assert pt[0].json_field["test"] == "example"
+    assert pt[1].json_field["test"] == "value"
+
+    pt = db.exec(select(Post).sort("-json_order[test]")).all()
+    assert len(pt) == 2
+    assert pt[0].json_field["test"] == "value"
+    assert pt[1].json_field["test"] == "example"
 
 
 def test_includes(db):
