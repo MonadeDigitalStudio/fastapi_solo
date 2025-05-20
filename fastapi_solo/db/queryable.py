@@ -110,6 +110,11 @@ class Queryable:
         q = self
         if filters:
             for key, value in filters.items():
+                if "[" in key and key.endswith("]"):
+                    col = key.split("[")[0]
+                    json_key = key.split("[", 1)[1].removesuffix("]")
+                    q = self._apply_json_filter(q, col, json_key, value)
+                    continue
                 of_key = f"of_{key}"
                 attr = self._get_model_attr(self.model, of_key)
                 if attr and callable(attr):
@@ -283,6 +288,13 @@ class Queryable:
         if not attr:
             attr = self._get_model_attr_k(model, underscore(key))
         return attr
+
+    def _apply_json_filter(self, q, key, json_key, value):
+        of_key = f"of_{key}"
+        attr = self._get_model_attr(self.model, of_key)
+        if attr and callable(attr):
+            q = attr(q, json_key, value)
+        return q
 
 
 def _set_queryables(cls, filter_by):
