@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
-
+from uuid import UUID
 
 from ..utils.db import get_single_pk
 from ..utils.config import FastapiSoloConfig
@@ -26,7 +26,7 @@ def _is_relationship_argument(cls, key, value):
     if (
         isinstance(value, list)
         and len(value) > 0
-        and (isinstance(value[0], int) or isinstance(value[0], str))
+        and (isinstance(value[0], int) or isinstance(value[0], str) or isinstance(value[0], UUID))
     ):
         attr = getattr(cls, key)
         attr_type = getattr(attr, "property", None)

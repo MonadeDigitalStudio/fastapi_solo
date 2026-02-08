@@ -8,6 +8,7 @@ from typing import (
     overload,
     TYPE_CHECKING,
 )
+from uuid import UUID
 from typing_extensions import deprecated
 from sqlalchemy import ScalarResult, func, Engine, Select
 from sqlalchemy.orm import (
@@ -196,7 +197,7 @@ def _decode_field(cls, db, key, value):
     if (
         isinstance(value, list)
         and len(value) > 0
-        and (isinstance(value[0], int) or isinstance(value[0], str))
+        and (isinstance(value[0], int) or isinstance(value[0], str) or isinstance(value[0], UUID))
     ):
         attr = getattr(cls, key)
         attr_type = getattr(attr, "property", None)
