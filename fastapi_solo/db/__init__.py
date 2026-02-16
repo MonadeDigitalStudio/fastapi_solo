@@ -2,6 +2,7 @@ from .database import (
     SessionFactory as SessionFactory,
     Base as Base,
     BaseWithTS as BaseWithTS,
+    BaseWithTSZ as BaseWithTSZ,
     declarative_base as declarative_base,
     get_raw_session as get_raw_session,
     get_db as get_db,

@@ -12,6 +12,8 @@ if version_info.minor >= 12:
 else:
     utcnow = datetime.datetime.utcnow
 
+tznow = lambda: datetime.datetime.now().astimezone()
+
 CreatedAtColumn = MappedColumn(
     "created_at",
     DateTime,
@@ -29,9 +31,31 @@ UpdatedAtColumn = MappedColumn(
     server_default=func.now(),
 )
 
+CreatedAtTZColumn = MappedColumn(
+    "created_at",
+    DateTime(timezone=True),
+    nullable=False,
+    default=tznow,
+    server_default=func.now(),
+)
+
+UpdatedAtTZColumn = MappedColumn(
+    "updated_at",
+    DateTime(timezone=True),
+    nullable=False,
+    default=tznow,
+    onupdate=tznow,
+    server_default=func.now(),
+)
+
 timestamps = [
     CreatedAtColumn,
     UpdatedAtColumn,
+]
+
+timestamps_tz = [
+    CreatedAtTZColumn,
+    UpdatedAtTZColumn,
 ]
 
 

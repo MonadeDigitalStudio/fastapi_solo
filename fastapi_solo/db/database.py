@@ -32,6 +32,8 @@ from ..utils.db import (
     get_single_pk,
     CreatedAtColumn,
     UpdatedAtColumn,
+    CreatedAtTZColumn,
+    UpdatedAtTZColumn,
 )
 from ..exc import DbException
 
@@ -191,6 +193,13 @@ class BaseWithTS(Base):
     __abstract__ = True
     created_at: Mapped[datetime] = CreatedAtColumn
     updated_at: Mapped[datetime] = UpdatedAtColumn
+
+class BaseWithTSZ(Base):
+    """Base class for all the models with timestamps with timezone"""
+
+    __abstract__ = True
+    created_at: Mapped[datetime] = CreatedAtTZColumn
+    updated_at: Mapped[datetime] = UpdatedAtTZColumn
 
 
 def _decode_field(cls, db, key, value):
